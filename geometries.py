@@ -9,7 +9,7 @@ def test_key(key):
     '''function for filtering geometric_tests.__dict__ keys
     based on whats a geometric test and what isn't'''
     key = key.split('_')
-    if len(key) >= 2:
+    if len(key) == 3:
       #possibly
       if key[0]:
         return True
@@ -39,14 +39,62 @@ def key2method(name):
         result['_'.join(reversed(parts[:-1]))] = func
     return result
 
+
+
+def key2method2(geomtype):
+    '''Create methods for geometry type based on the functions 
+    in geometric tests.  Do this by creating a dictionary of 
+    geometric tests, renaming the key to suit the geometry object 
+    it will be a  method for.  So, take the function at 
+    geomtype_intersects_aabb and make it the method 
+    `intersects_aabb(self, aabb1)` for a geometry object with 
+    _type=geom.  In the case that the test was defined with 
+    the arguments switched around (aabb1.intersects(geom)),
+    the function should check and switch its arguments/result
+
+    result should be used to update the object's __dict__
+    '''
+    result = {}
+    tmp = {} #{intersects: {bbox: segs_intersects_bbox} }
+    for key,func in g_tests.items():
+      g1,funcname,g2 =  key.split('_') #geometric tests must be named g1_test_g2()
+      if g1 == geomtype:
+        tmp.setdefault(funcname,dict())[g2] = func
+      elif g2 == geomtype:
+        tmp.setdefault(funcname,dict())[g1] = func
+
+    def make_dispatcher(fdict):
+      '''closure for setting up a dispatcher for this function'''
+      def dispatcher(*args,**kwargs):
+        '''takes a dictionary of {name: func} and calls the
+        correct function for name.'''
+        print args
+        self=args[0]
+        other=args[1]
+        try: return fdict[other._type](self,other)
+        except KeyError:
+          raise AttributeError("%s does not have function %s for type %s")
+      return dispatcher
+
+    for funcname, fdict in tmp.items():
+      #create a dispatching function for each type function name
+      dispatcher = make_dispatcher(fdict)
+      dispatcher.__name__ = funcname
+      dispatcher.__doc__ = '''Dispatched %s function for %s.\ndefined for:'''%(funcname, geomtype) 
+      dispatcher.__doc__ += '\n    '.join(fdict.keys())
+      dispatcher.__doc__ += '\n(Should probably have more documentation here, but what?)' 
+      result[funcname] = dispatcher
+    return result
+
 def geometry(cls):
     '''wrapper for geometry objects to populate
     them with relevant attributes from geometric_tests'''
     def give_attributes(*args,**kwargs):
         #http://stackoverflow.com/questions/10233553/bind-a-method-that-calls-other-methods-inside-the-class
-        for key,func in key2method(cls.name).items():
+        for key,func in key2method2(cls._type).items():
           #setattr(Segments2d,key,MethodType(func,Segments2d))
-          setattr(cls,key,func)
+          setattr(cls,key,MethodType(func,None,cls))
+          print "set attr"
         return cls(*args,**kwargs)
     give_attributes.__name__ = cls.__name__
     give_attributes.__doc__ = cls.__doc__
@@ -109,7 +157,7 @@ class Geometry(object):
 class Segments2d(Geometry):
     '''An array of 2D line segments defined by
     [x_begin,y_begin,x_end,y_end]'''
-    name = 'segments2d'
+    _type = 'segments2d'
 
     def __init__(self):
         Geometry.__init__(self,shape=(4,))
@@ -144,6 +192,7 @@ if __name__ == '__main__':
   n = 10
   t = np.linspace(0,2*np.pi,n)
 
+  print "create segments"
   segs1 = Segments2d()
   rays1 = np.zeros((n,4),dtype=np.float32)
   rays1[:,2] = np.cos(t)
@@ -156,7 +205,7 @@ if __name__ == '__main__':
   rays2[:,3] = np.sin(t)
   segs2.add_data(rays2)
 
-  pts1,mask1 = segs1.intersection_segments2d(segs2)
-  pts2,mask2 = segs2.intersection_segments2d(segs1)
+  pts1,mask1 = segs1.intersection(segs2)
+  pts2,mask2 = segs2.intersection(segs1)
 
 

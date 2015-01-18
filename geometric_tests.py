@@ -12,15 +12,15 @@ class reversible_args(object):
     def __init__(self,name1,name2):
         '''original function takes arguments of type name1
         and type name2, in that order'''
-        self.name1=name1
-        self.name2=name2
+        self._type1=name1
+        self._type2=name2
     def __call__(self,f):
         '''Do something to change this docstring to the
         docstring of the original function'''
         def wrapped_f(geom1,geom2):
-            if geom1.name == self.name1 and geom2.name==self.name2:
+            if geom1._type == self._type1 and geom2._type==self._type2:
               return f(geom1,geom2)
-            elif geom1.name == self.name2 and geom2.name==self.name1:
+            elif geom1._type == self._type2 and geom2._type==self._type1:
               result,mask = f(geom2,geom1)
               return result.swapaxes(0,1), mask.swapaxes(0,1)
             else:
@@ -56,5 +56,5 @@ def segments2d_intersection_segments2d(segs1,segs2):
 
 @reversible_args('segments2d','aabbs')
 def segments2d_intersects_aabb(segs,aabb):
-    print "got called!",segs.name,aabb
+    print "got called!",segs._type,aabb
 
