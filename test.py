@@ -103,7 +103,7 @@ if __name__ == '__main__':
     xs,ys = export4mpl(segs1)
     plt.plot(xs,ys,'b') #blue solid
     xs,ys = export4mpl(segs2)
-    plt.plot(xs,ys,color='.70') #gray dashed
+    plt.plot(xs,ys,color='.70') #gray
     
     xs,ys = export4mpl(segs2['begin'])
     plt.plot(xs,ys,'ko') #black dots
@@ -118,9 +118,10 @@ if __name__ == '__main__':
 
     ###plot segs1 from begining to first intersection###
     
-    ub = result.points[segs2]
+    #Get seg2's parameter of intersection 
+    ub = result.points[segs2] 
 
-    axis = 2
+    axis = 2  #Manually set axis of segs1. TODO: fix this
     shortest = np.nanmin(ub.arr,axis=axis)
     pts = segs2.eval_param(shortest)
 
